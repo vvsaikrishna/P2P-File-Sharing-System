@@ -61,6 +61,8 @@ def recv_json(conn):
 
 # ---------- Request Handlers ----------
 def handle_register(peer_id, data):
+    if peer_id in peers:
+        return {"status": "ok", "message": "peer_id already used"}
     with peers_lock:
         peers[peer_id] = {
             "ip":        data["ip"],

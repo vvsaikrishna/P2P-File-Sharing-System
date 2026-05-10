@@ -421,7 +421,7 @@ def print_help():
 
 # ---------- Main ----------
 def main():
-    global FERNET_KEY
+    global PASSWORD, FERNET_KEY
 
     os.makedirs(SHARED_FOLDER, exist_ok=True)
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
@@ -439,30 +439,38 @@ def main():
     ).start()
 
     my_ip   = get_local_ip()
-    peer_id = input("Enter your peer name (e.g. alice, bob): ").strip()
-    if not peer_id:
-        peer_id = f"peer_{os.getpid()}"
+    peer_id = None
+    password = None
+    while True:
+        peer_id = input("Enter your peer name (e.g. alice, bob): ").strip()
+        if not peer_id:
+            peer_id = f"peer_{os.getpid()}"
 
-    # NEW: Ask for network password — hidden input like ***
-    # All peers must use the same password
-    # Wrong password = decryption fails = cannot access any files
-    password   = getpass.getpass("🔑 Network password: ")
-    FERNET_KEY = make_fernet_key(password)
-    print("✅ Encryption key ready")
+        # Register with tracker
+        print(f"🔗 Connecting to tracker at {TRACKER_HOST}:{TRACKER_PORT}...")
+        response = tracker_request({
+            "action":  "register",
+            "peer_id": peer_id,
+            "ip":      my_ip,
+            "port":    actual_port,
+            "files":   list_shared_files()
+        })
 
-    # Register with tracker
-    print(f"\n🔗 Connecting to tracker at {TRACKER_HOST}:{TRACKER_PORT}...")
-    response = tracker_request({
-        "action":  "register",
-        "peer_id": peer_id,
-        "ip":      my_ip,
-        "port":    actual_port,
-        "files":   list_shared_files()
-    })
-
-    if not response or response["status"] != "ok":
-        print("❌ Failed to register with tracker. Exiting.")
-        sys.exit(1)
+        if not response or response["status"] != "ok":
+            print("❌ Failed to register with tracker. Exiting.")
+            sys.exit(1)
+        elif response["message"] == "peer_id already used":
+            print("❌ Failed to register with tracker. ")
+            print(f"Reason: peer name `{peer_id}` is not available.")
+            print("Try using another peer name...")
+        else:
+            # NEW: Ask for network password — hidden input like ***
+            # All peers must use the same password
+            # Wrong password = decryption fails = cannot access any files
+            password   = getpass.getpass("🔑 Network password: ")
+            FERNET_KEY = make_fernet_key(password)
+            print("✅ Encryption key ready")
+            break
 
     print(f"✅ Registered as '{peer_id}' | IP: {my_ip} | Port: {actual_port}")
 

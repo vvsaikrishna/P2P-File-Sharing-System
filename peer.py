@@ -353,8 +353,10 @@ def cmd_download(peer_id, filename, peer_ip, peer_port):
 
     except ConnectionRefusedError:
         print(f"❌ Cannot connect to peer {peer_ip}:{peer_port}")
+    except ConnectionResetError:
+        print(f"\n❌ Download failed! Sender disconnected.")
     except Exception as e:
-        print(f"❌ Download failed: {e}")
+        print(f"\n❌ Download failed: {e}")
         if os.path.exists(save_path):
             os.remove(save_path)
 
